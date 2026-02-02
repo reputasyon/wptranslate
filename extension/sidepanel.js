@@ -99,26 +99,39 @@ function showTranslation(data) {
 
   const time = new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
   let detectedLang = data.detectedLanguage || 'Unknown';
-
-  // Use detected language for both display and reply
-  // Only default to Arabic if truly unknown AND no language code exists
-  const displayLang = detectedLang;
   let replyLang = detectedLang;
+  let displayLang = detectedLang;
 
-  // Only default to Arabic if we have no usable language
+  // If language is unknown, try to detect from script
   if (detectedLang === 'Bilinmiyor' || detectedLang === 'Unknown' || !languageCodes[detectedLang]) {
-    // Check if original text gives us a hint (Arabic script, Cyrillic, etc.)
     const originalText = data.original || '';
+    let inferredLang = null;
+
     if (/[\u0600-\u06FF]/.test(originalText)) {
-      replyLang = 'Arapça';
+      inferredLang = 'Arapça';
     } else if (/[\u0400-\u04FF]/.test(originalText)) {
-      replyLang = 'Rusça';
+      inferredLang = 'Rusça';
     } else if (/[\u0590-\u05FF]/.test(originalText)) {
-      replyLang = 'İbranice';
-    } else {
-      replyLang = 'Arapça'; // Final fallback
+      inferredLang = 'İbranice';
+    } else if (/[\u4E00-\u9FFF]/.test(originalText)) {
+      inferredLang = 'Çince';
+    } else if (/[\u3040-\u309F\u30A0-\u30FF]/.test(originalText)) {
+      inferredLang = 'Japonca';
+    } else if (/[\uAC00-\uD7AF]/.test(originalText)) {
+      inferredLang = 'Korece';
+    } else if (/[ğüşıöçĞÜŞİÖÇ]/.test(originalText)) {
+      inferredLang = 'Türkçe';
     }
-    console.log(`[SidePanel] Language unknown, inferred: ${replyLang}`);
+
+    if (inferredLang) {
+      replyLang = inferredLang;
+      displayLang = inferredLang; // Show inferred language in UI too
+      console.log(`[SidePanel] Language inferred from script: ${inferredLang}`);
+    } else {
+      replyLang = 'Arapça';
+      displayLang = 'Arapça'; // Default fallback
+      console.log(`[SidePanel] Language unknown, defaulting to Arabic`);
+    }
   }
 
   const isRtl = rtlLanguages.some(lang => detectedLang.toLowerCase().includes(lang.toLowerCase()));
