@@ -1,5 +1,5 @@
 // WhatsApp Voice Translator - Side Panel
-// v2.0.0 - Gemini AI + Reply translation fix
+// v2.0.1 - Gemini AI + Reply translation fix
 
 const translationsContainer = document.getElementById('translations');
 const emptyState = document.getElementById('emptyState');
@@ -12,19 +12,19 @@ const rtlLanguages = ['arabic', 'ar', 'hebrew', 'he', 'persian', 'fa', 'urdu', '
 
 // Language codes for translation
 const languageCodes = {
-  'Arapça': 'ar', 'arabic': 'ar', 'ar': 'ar',
-  'İngilizce': 'en', 'english': 'en', 'en': 'en',
-  'Almanca': 'de', 'german': 'de', 'de': 'de',
-  'Fransızca': 'fr', 'french': 'fr', 'fr': 'fr',
-  'İspanyolca': 'es', 'spanish': 'es', 'es': 'es',
-  'Rusça': 'ru', 'russian': 'ru', 'ru': 'ru',
-  'Çince': 'zh', 'chinese': 'zh', 'zh': 'zh',
-  'Japonca': 'ja', 'japanese': 'ja', 'ja': 'ja',
-  'Korece': 'ko', 'korean': 'ko', 'ko': 'ko',
-  'Farsça': 'fa', 'persian': 'fa', 'fa': 'fa',
-  'Urduca': 'ur', 'urdu': 'ur', 'ur': 'ur',
-  'Hintçe': 'hi', 'hindi': 'hi', 'hi': 'hi',
-  'Türkçe': 'tr', 'turkish': 'tr', 'tr': 'tr'
+  'Arapça': 'ar', 'arabic': 'ar', 'ar': 'ar', 'Arabic': 'ar',
+  'İngilizce': 'en', 'english': 'en', 'en': 'en', 'English': 'en',
+  'Almanca': 'de', 'german': 'de', 'de': 'de', 'German': 'de',
+  'Fransızca': 'fr', 'french': 'fr', 'fr': 'fr', 'French': 'fr',
+  'İspanyolca': 'es', 'spanish': 'es', 'es': 'es', 'Spanish': 'es',
+  'Rusça': 'ru', 'russian': 'ru', 'ru': 'ru', 'Russian': 'ru',
+  'Çince': 'zh', 'chinese': 'zh', 'zh': 'zh', 'Chinese': 'zh',
+  'Japonca': 'ja', 'japanese': 'ja', 'ja': 'ja', 'Japanese': 'ja',
+  'Korece': 'ko', 'korean': 'ko', 'ko': 'ko', 'Korean': 'ko',
+  'Farsça': 'fa', 'persian': 'fa', 'fa': 'fa', 'Persian': 'fa',
+  'Urduca': 'ur', 'urdu': 'ur', 'ur': 'ur', 'Urdu': 'ur',
+  'Hintçe': 'hi', 'hindi': 'hi', 'hi': 'hi', 'Hindi': 'hi',
+  'Türkçe': 'tr', 'turkish': 'tr', 'tr': 'tr', 'Turkish': 'tr'
 };
 
 // Listen for messages from background script
@@ -43,7 +43,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 function showLoading(data) {
   hideEmptyState();
 
-  // Remove any existing loading card
   const existingLoading = document.querySelector('.loading-card');
   if (existingLoading) existingLoading.remove();
 
@@ -61,7 +60,6 @@ function showLoading(data) {
 function showTranslation(data) {
   hideEmptyState();
 
-  // Remove loading card
   const loadingCard = document.getElementById('loadingCard');
   if (loadingCard) loadingCard.remove();
 
@@ -74,6 +72,8 @@ function showTranslation(data) {
   const cardId = 'card_' + Date.now();
 
   card.id = cardId;
+  card.dataset.language = detectedLang;
+
   card.innerHTML = `
     <div class="card-header">
       <span class="card-sender">${escapeHtml(data.sender || 'Ses Mesajı')}<span class="language-badge">${escapeHtml(detectedLang)}</span></span>
@@ -85,20 +85,20 @@ function showTranslation(data) {
     <div class="translated-text">${escapeHtml(data.translation || '')}</div>
 
     <div class="reply-section">
-      <button class="reply-toggle" onclick="toggleReply('${cardId}', '${escapeHtml(detectedLang)}')">
+      <button class="reply-toggle" data-card="${cardId}">
         💬 Cevap Yaz
       </button>
       <div class="reply-form" id="reply-form-${cardId}">
         <textarea class="reply-input" id="reply-input-${cardId}" placeholder="Türkçe cevabınızı yazın..."></textarea>
         <div class="reply-actions">
-          <button class="reply-btn" onclick="translateReply('${cardId}', '${escapeHtml(detectedLang)}', this)">
+          <button class="reply-btn" data-card="${cardId}">
             🌐 ${escapeHtml(detectedLang)}'ya Çevir
           </button>
         </div>
         <div class="reply-result" id="reply-result-${cardId}">
           <div class="reply-result-label">📤 ${escapeHtml(detectedLang)} Çeviri</div>
           <div class="reply-result-text" id="reply-text-${cardId}"></div>
-          <button class="copy-btn" onclick="copyToClipboard('${cardId}', this)">📋 Kopyala</button>
+          <button class="copy-btn" data-card="${cardId}">📋 Kopyala</button>
         </div>
       </div>
     </div>
@@ -106,11 +106,21 @@ function showTranslation(data) {
 
   translationsContainer.insertBefore(card, translationsContainer.firstChild);
 
+  // Add event listeners
+  const replyToggle = card.querySelector('.reply-toggle');
+  const replyBtn = card.querySelector('.reply-btn');
+  const copyBtn = card.querySelector('.copy-btn');
+
+  replyToggle.addEventListener('click', () => toggleReply(cardId));
+  replyBtn.addEventListener('click', (e) => translateReply(cardId, detectedLang, e.target));
+  copyBtn.addEventListener('click', (e) => copyToClipboard(cardId, e.target));
+
   translations.push({ ...data, cardId });
   clearBtn.style.display = 'flex';
 }
 
-function toggleReply(cardId, language) {
+function toggleReply(cardId) {
+  console.log('[SidePanel] Toggle reply for:', cardId);
   const form = document.getElementById(`reply-form-${cardId}`);
   if (form) {
     form.classList.toggle('active');
@@ -122,21 +132,26 @@ function toggleReply(cardId, language) {
 }
 
 async function translateReply(cardId, targetLanguage, btnElement) {
+  console.log('[SidePanel] Translate reply:', cardId, targetLanguage);
+
   const input = document.getElementById(`reply-input-${cardId}`);
   const resultDiv = document.getElementById(`reply-result-${cardId}`);
   const resultText = document.getElementById(`reply-text-${cardId}`);
 
   if (!input || !input.value.trim()) {
+    console.log('[SidePanel] No input text');
     return;
   }
 
   const turkishText = input.value.trim();
   const targetLangCode = languageCodes[targetLanguage] || targetLanguage.toLowerCase();
 
+  console.log('[SidePanel] Translating to:', targetLangCode);
+
   // Show loading
   if (btnElement) {
     btnElement.disabled = true;
-    btnElement.innerHTML = '⏳ Çevriliyor...';
+    btnElement.textContent = '⏳ Çevriliyor...';
   }
 
   try {
@@ -152,6 +167,7 @@ async function translateReply(cardId, targetLanguage, btnElement) {
     });
 
     const data = await response.json();
+    console.log('[SidePanel] Translation response:', data);
 
     if (data.success && data.translation) {
       resultText.textContent = data.translation;
@@ -166,7 +182,7 @@ async function translateReply(cardId, targetLanguage, btnElement) {
   } finally {
     if (btnElement) {
       btnElement.disabled = false;
-      btnElement.innerHTML = `🌐 ${targetLanguage}'ya Çevir`;
+      btnElement.textContent = `🌐 ${targetLanguage}'ya Çevir`;
     }
   }
 }
@@ -179,10 +195,10 @@ async function copyToClipboard(cardId, btnElement) {
       await navigator.clipboard.writeText(resultText.textContent);
       if (btnElement) {
         btnElement.classList.add('copied');
-        btnElement.innerHTML = '✅ Kopyalandı';
+        btnElement.textContent = '✅ Kopyalandı';
         setTimeout(() => {
           btnElement.classList.remove('copied');
-          btnElement.innerHTML = '📋 Kopyala';
+          btnElement.textContent = '📋 Kopyala';
         }, 2000);
       }
     } catch (err) {
@@ -192,7 +208,6 @@ async function copyToClipboard(cardId, btnElement) {
 }
 
 function showError(data) {
-  // Remove loading card
   const loadingCard = document.getElementById('loadingCard');
   if (loadingCard) loadingCard.remove();
 
@@ -204,7 +219,6 @@ function showError(data) {
 
   translationsContainer.insertBefore(errorCard, translationsContainer.firstChild);
 
-  // Auto remove after 5 seconds
   setTimeout(() => {
     if (errorCard.parentNode) errorCard.remove();
     if (translations.length === 0) showEmptyState();
@@ -234,4 +248,4 @@ clearBtn.addEventListener('click', () => {
   clearBtn.style.display = 'none';
 });
 
-console.log('[SidePanel] WhatsApp Voice Translator Side Panel v1.3.9 loaded');
+console.log('[SidePanel] WhatsApp Voice Translator Side Panel v2.0.1 loaded');
