@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "WhatsApp Voice Translator",
-  "version": "1.4.1",
+  "version": "2.0.0",
   "description": "Translate WhatsApp voice messages to Turkish (auto language detection) with reply translation",
   "permissions": [
     "activeTab",

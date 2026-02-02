@@ -1,5 +1,5 @@
 // WhatsApp Voice Translator - Side Panel
-// v1.3.9 - Auto language detection + Reply translation
+// v2.0.0 - Gemini AI + Reply translation fix
 
 const translationsContainer = document.getElementById('translations');
 const emptyState = document.getElementById('emptyState');
@@ -91,14 +91,14 @@ function showTranslation(data) {
       <div class="reply-form" id="reply-form-${cardId}">
         <textarea class="reply-input" id="reply-input-${cardId}" placeholder="Türkçe cevabınızı yazın..."></textarea>
         <div class="reply-actions">
-          <button class="reply-btn" onclick="translateReply('${cardId}', '${escapeHtml(detectedLang)}')">
+          <button class="reply-btn" onclick="translateReply('${cardId}', '${escapeHtml(detectedLang)}', this)">
             🌐 ${escapeHtml(detectedLang)}'ya Çevir
           </button>
         </div>
         <div class="reply-result" id="reply-result-${cardId}">
           <div class="reply-result-label">📤 ${escapeHtml(detectedLang)} Çeviri</div>
           <div class="reply-result-text" id="reply-text-${cardId}"></div>
-          <button class="copy-btn" onclick="copyToClipboard('${cardId}')">📋 Kopyala</button>
+          <button class="copy-btn" onclick="copyToClipboard('${cardId}', this)">📋 Kopyala</button>
         </div>
       </div>
     </div>
@@ -121,11 +121,10 @@ function toggleReply(cardId, language) {
   }
 }
 
-async function translateReply(cardId, targetLanguage) {
+async function translateReply(cardId, targetLanguage, btnElement) {
   const input = document.getElementById(`reply-input-${cardId}`);
   const resultDiv = document.getElementById(`reply-result-${cardId}`);
   const resultText = document.getElementById(`reply-text-${cardId}`);
-  const btn = event.target;
 
   if (!input || !input.value.trim()) {
     return;
@@ -135,8 +134,10 @@ async function translateReply(cardId, targetLanguage) {
   const targetLangCode = languageCodes[targetLanguage] || targetLanguage.toLowerCase();
 
   // Show loading
-  btn.disabled = true;
-  btn.innerHTML = '⏳ Çevriliyor...';
+  if (btnElement) {
+    btnElement.disabled = true;
+    btnElement.innerHTML = '⏳ Çevriliyor...';
+  }
 
   try {
     const response = await fetch('http://localhost:3456/translate-text', {
@@ -163,24 +164,27 @@ async function translateReply(cardId, targetLanguage) {
     resultText.textContent = '❌ Hata: ' + error.message;
     resultDiv.classList.add('active');
   } finally {
-    btn.disabled = false;
-    btn.innerHTML = `🌐 ${targetLanguage}'ya Çevir`;
+    if (btnElement) {
+      btnElement.disabled = false;
+      btnElement.innerHTML = `🌐 ${targetLanguage}'ya Çevir`;
+    }
   }
 }
 
-async function copyToClipboard(cardId) {
+async function copyToClipboard(cardId, btnElement) {
   const resultText = document.getElementById(`reply-text-${cardId}`);
-  const copyBtn = event.target;
 
   if (resultText && resultText.textContent) {
     try {
       await navigator.clipboard.writeText(resultText.textContent);
-      copyBtn.classList.add('copied');
-      copyBtn.innerHTML = '✅ Kopyalandı';
-      setTimeout(() => {
-        copyBtn.classList.remove('copied');
-        copyBtn.innerHTML = '📋 Kopyala';
-      }, 2000);
+      if (btnElement) {
+        btnElement.classList.add('copied');
+        btnElement.innerHTML = '✅ Kopyalandı';
+        setTimeout(() => {
+          btnElement.classList.remove('copied');
+          btnElement.innerHTML = '📋 Kopyala';
+        }, 2000);
+      }
     } catch (err) {
       console.error('[SidePanel] Copy failed:', err);
     }
