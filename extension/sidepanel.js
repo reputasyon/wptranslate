@@ -128,9 +128,9 @@ function showTranslation(data) {
       displayLang = inferredLang; // Show inferred language in UI too
       console.log(`[SidePanel] Language inferred from script: ${inferredLang}`);
     } else {
-      replyLang = 'Arapça';
-      displayLang = 'Arapça'; // Default fallback
-      console.log(`[SidePanel] Language unknown, defaulting to Arabic`);
+      replyLang = null; // Can't determine language
+      displayLang = 'Bilinmiyor';
+      console.log(`[SidePanel] Language truly unknown`);
     }
   }
 
@@ -150,6 +150,7 @@ function showTranslation(data) {
     <div class="translated-label">🇹🇷 Türkçe</div>
     <div class="translated-text">${escapeHtml(data.translation || '')}</div>
 
+    ${replyLang ? `
     <div class="reply-section">
       <button class="reply-toggle" data-card="${cardId}">
         💬 Cevap Yaz
@@ -168,18 +169,21 @@ function showTranslation(data) {
         </div>
       </div>
     </div>
+    ` : ''}
   `;
 
   translationsContainer.insertBefore(card, translationsContainer.firstChild);
 
-  // Add event listeners
-  const replyToggle = card.querySelector('.reply-toggle');
-  const replyBtn = card.querySelector('.reply-btn');
-  const copyBtn = card.querySelector('.copy-btn');
+  // Add event listeners (only if reply section exists)
+  if (replyLang) {
+    const replyToggle = card.querySelector('.reply-toggle');
+    const replyBtn = card.querySelector('.reply-btn');
+    const copyBtn = card.querySelector('.copy-btn');
 
-  replyToggle.addEventListener('click', () => toggleReply(cardId));
-  replyBtn.addEventListener('click', (e) => translateReply(cardId, replyLang, e.target));
-  copyBtn.addEventListener('click', (e) => copyToClipboard(cardId, e.target));
+    replyToggle.addEventListener('click', () => toggleReply(cardId));
+    replyBtn.addEventListener('click', (e) => translateReply(cardId, replyLang, e.target));
+    copyBtn.addEventListener('click', (e) => copyToClipboard(cardId, e.target));
+  }
 
   translations.push({ ...data, cardId });
   clearBtn.style.display = 'flex';
