@@ -1,0 +1,47 @@
+/* WhatsApp Voice Translator Styles v1.3.0 */
+
+.wvt-button-wrapper {
+  display: inline-flex;
+  margin-left: 8px;
+  vertical-align: middle;
+}
+
+.wvt-translate-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: rgba(37, 211, 102, 0.15);
+  border: none;
+  border-radius: 50%;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  padding: 0;
+}
+
+.wvt-translate-btn:hover {
+  background: rgba(37, 211, 102, 0.3);
+  transform: scale(1.1);
+}
+
+.wvt-translate-btn:active {
+  transform: scale(0.95);
+}
+
+.wvt-translate-btn.loading {
+  opacity: 0.7;
+  cursor: wait;
+  animation: pulse 1s ease infinite;
+}
+
+.wvt-translate-btn.done {
+  background: rgba(37, 211, 102, 0.4);
+  color: #25D366;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.7; }
+  50% { opacity: 1; }
+}
