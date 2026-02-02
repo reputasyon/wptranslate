@@ -91,6 +91,30 @@ app.get('/health', (req, res) => {
   res.json({ status: 'healthy' });
 });
 
+// Detect language from script (fallback)
+function detectLanguageFromScript(text) {
+  if (!text) return null;
+
+  // Arabic script (includes Persian, Urdu)
+  if (/[\u0600-\u06FF]/.test(text)) return 'Arabic';
+  // Cyrillic (Russian, Ukrainian, etc.)
+  if (/[\u0400-\u04FF]/.test(text)) return 'Russian';
+  // Hebrew
+  if (/[\u0590-\u05FF]/.test(text)) return 'Hebrew';
+  // Chinese
+  if (/[\u4E00-\u9FFF]/.test(text)) return 'Chinese';
+  // Japanese (Hiragana, Katakana)
+  if (/[\u3040-\u309F\u30A0-\u30FF]/.test(text)) return 'Japanese';
+  // Korean
+  if (/[\uAC00-\uD7AF]/.test(text)) return 'Korean';
+  // Greek
+  if (/[\u0370-\u03FF]/.test(text)) return 'Greek';
+  // Turkish specific chars
+  if (/[ğüşıöçĞÜŞİÖÇ]/.test(text)) return 'Turkish';
+
+  return null;
+}
+
 // Language name mapping
 const languageNames = {
   'arabic': 'Arapça', 'ar': 'Arapça',
@@ -208,7 +232,18 @@ Rules:
 
     const originalText = parsedResponse.original_text || '';
     const turkishText = parsedResponse.turkish_translation || '';
-    const detectedLanguage = parsedResponse.detected_language || 'Unknown';
+    let detectedLanguage = parsedResponse.detected_language || '';
+
+    // If no language detected, try to infer from script
+    if (!detectedLanguage || detectedLanguage === 'Unknown') {
+      const inferredLang = detectLanguageFromScript(originalText);
+      if (inferredLang) {
+        detectedLanguage = inferredLang;
+        console.log(`🔍 Inferred language from script: ${inferredLang}`);
+      } else {
+        detectedLanguage = 'Unknown';
+      }
+    }
 
     console.log(`🌍 Detected language: ${detectedLanguage}`);
     console.log(`📝 Original: "${originalText.substring(0, 100)}${originalText.length > 100 ? '...' : ''}"`);

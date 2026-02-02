@@ -10,21 +10,52 @@ let translations = [];
 // RTL languages
 const rtlLanguages = ['arabic', 'ar', 'hebrew', 'he', 'persian', 'fa', 'urdu', 'ur', 'Arapça', 'İbranice', 'Farsça', 'Urduca'];
 
-// Language codes for translation
+// Language codes for translation (comprehensive list)
 const languageCodes = {
+  // Arabic
   'Arapça': 'ar', 'arabic': 'ar', 'ar': 'ar', 'Arabic': 'ar',
+  // English
   'İngilizce': 'en', 'english': 'en', 'en': 'en', 'English': 'en',
+  // German
   'Almanca': 'de', 'german': 'de', 'de': 'de', 'German': 'de',
+  // French
   'Fransızca': 'fr', 'french': 'fr', 'fr': 'fr', 'French': 'fr',
+  // Spanish
   'İspanyolca': 'es', 'spanish': 'es', 'es': 'es', 'Spanish': 'es',
+  // Russian
   'Rusça': 'ru', 'russian': 'ru', 'ru': 'ru', 'Russian': 'ru',
+  // Chinese
   'Çince': 'zh', 'chinese': 'zh', 'zh': 'zh', 'Chinese': 'zh',
+  // Japanese
   'Japonca': 'ja', 'japanese': 'ja', 'ja': 'ja', 'Japanese': 'ja',
+  // Korean
   'Korece': 'ko', 'korean': 'ko', 'ko': 'ko', 'Korean': 'ko',
+  // Persian
   'Farsça': 'fa', 'persian': 'fa', 'fa': 'fa', 'Persian': 'fa',
+  // Urdu
   'Urduca': 'ur', 'urdu': 'ur', 'ur': 'ur', 'Urdu': 'ur',
+  // Hindi
   'Hintçe': 'hi', 'hindi': 'hi', 'hi': 'hi', 'Hindi': 'hi',
-  'Türkçe': 'tr', 'turkish': 'tr', 'tr': 'tr', 'Turkish': 'tr'
+  // Turkish
+  'Türkçe': 'tr', 'turkish': 'tr', 'tr': 'tr', 'Turkish': 'tr',
+  // Kurdish
+  'Kürtçe': 'ku', 'kurdish': 'ku', 'ku': 'ku', 'Kurdish': 'ku',
+  // Azerbaijani
+  'Azerice': 'az', 'azerbaijani': 'az', 'az': 'az', 'Azerbaijani': 'az',
+  // Hebrew
+  'İbranice': 'he', 'hebrew': 'he', 'he': 'he', 'Hebrew': 'he',
+  // Portuguese
+  'Portekizce': 'pt', 'portuguese': 'pt', 'pt': 'pt', 'Portuguese': 'pt',
+  // Italian
+  'İtalyanca': 'it', 'italian': 'it', 'it': 'it', 'Italian': 'it',
+  // Dutch
+  'Hollandaca': 'nl', 'dutch': 'nl', 'nl': 'nl', 'Dutch': 'nl',
+  // Polish
+  'Lehçe': 'pl', 'polish': 'pl', 'pl': 'pl', 'Polish': 'pl',
+  // Ukrainian
+  'Ukraynaca': 'uk', 'ukrainian': 'uk', 'uk': 'uk', 'Ukrainian': 'uk',
+  // Greek
+  'Yunanca': 'el', 'greek': 'el', 'el': 'el', 'Greek': 'el'
 };
 
 // Listen for messages from background script
@@ -67,11 +98,28 @@ function showTranslation(data) {
   card.className = 'translation-card';
 
   const time = new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
-  let detectedLang = data.detectedLanguage || 'Bilinmiyor';
+  let detectedLang = data.detectedLanguage || 'Unknown';
 
-  // For display, show actual language. For translation, we'll default to Arabic if unknown
+  // Use detected language for both display and reply
+  // Only default to Arabic if truly unknown AND no language code exists
   const displayLang = detectedLang;
-  const replyLang = (detectedLang === 'Bilinmiyor' || detectedLang === 'Unknown') ? 'Arapça' : detectedLang;
+  let replyLang = detectedLang;
+
+  // Only default to Arabic if we have no usable language
+  if (detectedLang === 'Bilinmiyor' || detectedLang === 'Unknown' || !languageCodes[detectedLang]) {
+    // Check if original text gives us a hint (Arabic script, Cyrillic, etc.)
+    const originalText = data.original || '';
+    if (/[\u0600-\u06FF]/.test(originalText)) {
+      replyLang = 'Arapça';
+    } else if (/[\u0400-\u04FF]/.test(originalText)) {
+      replyLang = 'Rusça';
+    } else if (/[\u0590-\u05FF]/.test(originalText)) {
+      replyLang = 'İbranice';
+    } else {
+      replyLang = 'Arapça'; // Final fallback
+    }
+    console.log(`[SidePanel] Language unknown, inferred: ${replyLang}`);
+  }
 
   const isRtl = rtlLanguages.some(lang => detectedLang.toLowerCase().includes(lang.toLowerCase()));
   const cardId = 'card_' + Date.now();
