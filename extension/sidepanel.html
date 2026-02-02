@@ -258,9 +258,46 @@
       background: #20bd5a;
     }
 
-    .reply-btn:disabled {
+    .reply-btn:disabled,
+    .reply-btn-manual:disabled {
       background: #3d3d3d;
       cursor: not-allowed;
+    }
+
+    .reply-btn-manual {
+      background: #25D366;
+      border: none;
+      color: #fff;
+      font-size: 13px;
+      font-weight: 500;
+      padding: 8px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+
+    .reply-btn-manual:hover {
+      background: #20bd5a;
+    }
+
+    .lang-select {
+      flex: 1;
+      background: #1a1a1a;
+      border: 1px solid #3d3d3d;
+      border-radius: 8px;
+      padding: 8px 12px;
+      color: #fff;
+      font-size: 13px;
+      cursor: pointer;
+    }
+
+    .lang-select:focus {
+      outline: none;
+      border-color: #25D366;
     }
 
     .reply-result {

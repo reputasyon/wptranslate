@@ -150,7 +150,6 @@ function showTranslation(data) {
     <div class="translated-label">🇹🇷 Türkçe</div>
     <div class="translated-text">${escapeHtml(data.translation || '')}</div>
 
-    ${replyLang ? `
     <div class="reply-section">
       <button class="reply-toggle" data-card="${cardId}">
         💬 Cevap Yaz
@@ -158,31 +157,58 @@ function showTranslation(data) {
       <div class="reply-form" id="reply-form-${cardId}">
         <textarea class="reply-input" id="reply-input-${cardId}" placeholder="Türkçe cevabınızı yazın..."></textarea>
         <div class="reply-actions">
-          <button class="reply-btn" data-card="${cardId}">
-            🌐 ${escapeHtml(replyLang)}'ya Çevir
-          </button>
+          ${replyLang ? `
+            <button class="reply-btn" data-card="${cardId}" data-lang="${escapeHtml(replyLang)}">
+              🌐 ${escapeHtml(replyLang)}'ya Çevir
+            </button>
+          ` : `
+            <select class="lang-select" id="lang-select-${cardId}">
+              <option value="ar">🇸🇦 Arapça</option>
+              <option value="en">🇬🇧 İngilizce</option>
+              <option value="ru">🇷🇺 Rusça</option>
+              <option value="de">🇩🇪 Almanca</option>
+              <option value="fr">🇫🇷 Fransızca</option>
+              <option value="fa">🇮🇷 Farsça</option>
+              <option value="ur">🇵🇰 Urduca</option>
+              <option value="ku">Kürtçe</option>
+              <option value="az">🇦🇿 Azerice</option>
+            </select>
+            <button class="reply-btn-manual" data-card="${cardId}">
+              🌐 Çevir
+            </button>
+          `}
         </div>
         <div class="reply-result" id="reply-result-${cardId}">
-          <div class="reply-result-label">📤 ${escapeHtml(replyLang)} Çeviri</div>
+          <div class="reply-result-label" id="reply-label-${cardId}">📤 Çeviri</div>
           <div class="reply-result-text" id="reply-text-${cardId}"></div>
           <button class="copy-btn" data-card="${cardId}">📋 Kopyala</button>
         </div>
       </div>
     </div>
-    ` : ''}
   `;
 
   translationsContainer.insertBefore(card, translationsContainer.firstChild);
 
-  // Add event listeners (only if reply section exists)
-  if (replyLang) {
-    const replyToggle = card.querySelector('.reply-toggle');
-    const replyBtn = card.querySelector('.reply-btn');
-    const copyBtn = card.querySelector('.copy-btn');
+  // Add event listeners
+  const replyToggle = card.querySelector('.reply-toggle');
+  const copyBtn = card.querySelector('.copy-btn');
 
-    replyToggle.addEventListener('click', () => toggleReply(cardId));
+  replyToggle.addEventListener('click', () => toggleReply(cardId));
+  copyBtn.addEventListener('click', (e) => copyToClipboard(cardId, e.target));
+
+  if (replyLang) {
+    // Known language - direct button
+    const replyBtn = card.querySelector('.reply-btn');
     replyBtn.addEventListener('click', (e) => translateReply(cardId, replyLang, e.target));
-    copyBtn.addEventListener('click', (e) => copyToClipboard(cardId, e.target));
+  } else {
+    // Unknown language - dropdown + button
+    const replyBtnManual = card.querySelector('.reply-btn-manual');
+    replyBtnManual.addEventListener('click', (e) => {
+      const select = document.getElementById(`lang-select-${cardId}`);
+      const selectedLang = select.value;
+      const langNames = { ar: 'Arapça', en: 'İngilizce', ru: 'Rusça', de: 'Almanca', fr: 'Fransızca', fa: 'Farsça', ur: 'Urduca', ku: 'Kürtçe', az: 'Azerice' };
+      translateReply(cardId, langNames[selectedLang] || selectedLang, e.target);
+    });
   }
 
   translations.push({ ...data, cardId });
