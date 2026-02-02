@@ -67,7 +67,12 @@ function showTranslation(data) {
   card.className = 'translation-card';
 
   const time = new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
-  const detectedLang = data.detectedLanguage || 'Bilinmiyor';
+  let detectedLang = data.detectedLanguage || 'Bilinmiyor';
+
+  // For display, show actual language. For translation, we'll default to Arabic if unknown
+  const displayLang = detectedLang;
+  const replyLang = (detectedLang === 'Bilinmiyor' || detectedLang === 'Unknown') ? 'Arapça' : detectedLang;
+
   const isRtl = rtlLanguages.some(lang => detectedLang.toLowerCase().includes(lang.toLowerCase()));
   const cardId = 'card_' + Date.now();
 
@@ -76,7 +81,7 @@ function showTranslation(data) {
 
   card.innerHTML = `
     <div class="card-header">
-      <span class="card-sender">${escapeHtml(data.sender || 'Ses Mesajı')}<span class="language-badge">${escapeHtml(detectedLang)}</span></span>
+      <span class="card-sender">${escapeHtml(data.sender || 'Ses Mesajı')}<span class="language-badge">${escapeHtml(displayLang)}</span></span>
       <span class="card-time">${time}</span>
     </div>
     <div class="original-label">🗣️ Orijinal</div>
@@ -92,11 +97,11 @@ function showTranslation(data) {
         <textarea class="reply-input" id="reply-input-${cardId}" placeholder="Türkçe cevabınızı yazın..."></textarea>
         <div class="reply-actions">
           <button class="reply-btn" data-card="${cardId}">
-            🌐 ${escapeHtml(detectedLang)}'ya Çevir
+            🌐 ${escapeHtml(replyLang)}'ya Çevir
           </button>
         </div>
         <div class="reply-result" id="reply-result-${cardId}">
-          <div class="reply-result-label">📤 ${escapeHtml(detectedLang)} Çeviri</div>
+          <div class="reply-result-label">📤 ${escapeHtml(replyLang)} Çeviri</div>
           <div class="reply-result-text" id="reply-text-${cardId}"></div>
           <button class="copy-btn" data-card="${cardId}">📋 Kopyala</button>
         </div>
@@ -112,7 +117,7 @@ function showTranslation(data) {
   const copyBtn = card.querySelector('.copy-btn');
 
   replyToggle.addEventListener('click', () => toggleReply(cardId));
-  replyBtn.addEventListener('click', (e) => translateReply(cardId, detectedLang, e.target));
+  replyBtn.addEventListener('click', (e) => translateReply(cardId, replyLang, e.target));
   copyBtn.addEventListener('click', (e) => copyToClipboard(cardId, e.target));
 
   translations.push({ ...data, cardId });
@@ -144,7 +149,15 @@ async function translateReply(cardId, targetLanguage, btnElement) {
   }
 
   const turkishText = input.value.trim();
-  const targetLangCode = languageCodes[targetLanguage] || targetLanguage.toLowerCase();
+
+  // Default to Arabic if language is unknown
+  let effectiveLang = targetLanguage;
+  if (targetLanguage === 'Bilinmiyor' || targetLanguage === 'Unknown' || !targetLanguage) {
+    effectiveLang = 'Arapça';
+    console.log('[SidePanel] Unknown language, defaulting to Arabic');
+  }
+
+  const targetLangCode = languageCodes[effectiveLang] || effectiveLang.toLowerCase();
 
   console.log('[SidePanel] Translating to:', targetLangCode);
 
@@ -182,7 +195,7 @@ async function translateReply(cardId, targetLanguage, btnElement) {
   } finally {
     if (btnElement) {
       btnElement.disabled = false;
-      btnElement.textContent = `🌐 ${targetLanguage}'ya Çevir`;
+      btnElement.textContent = `🌐 ${effectiveLang}'ya Çevir`;
     }
   }
 }

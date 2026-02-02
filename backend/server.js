@@ -168,15 +168,15 @@ app.post('/translate', upload.single('audio'), async (req, res) => {
         }
       },
       {
-        text: `Bu ses kaydını dinle ve şu formatta JSON olarak yanıtla:
-{
-  "detected_language": "tespit edilen dil (örn: Arabic, English, German)",
-  "original_text": "orijinal dildeki transkripsiyon",
-  "turkish_translation": "Türkçe çeviri"
-}
+        text: `Listen to this audio and respond ONLY with valid JSON in this exact format:
+{"detected_language":"Arabic","original_text":"transcription in original language","turkish_translation":"Turkish translation"}
 
-Eğer ses zaten Türkçe ise, turkish_translation alanına orijinal metni yaz.
-Sadece JSON formatında yanıt ver, başka açıklama ekleme.`
+Rules:
+- detected_language must be one of: Arabic, English, German, French, Spanish, Russian, Persian, Urdu, Hindi, Turkish, Kurdish, Chinese, Japanese, Korean
+- original_text must be the exact transcription in the original spoken language
+- turkish_translation must be natural Turkish translation
+- If audio is already Turkish, copy original_text to turkish_translation
+- Return ONLY the JSON, no markdown, no explanation`
       }
     ]);
 
