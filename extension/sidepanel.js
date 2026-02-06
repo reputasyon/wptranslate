@@ -142,7 +142,7 @@ function showTranslation(data) {
 
   card.innerHTML = `
     <div class="card-header">
-      <span class="card-sender">${escapeHtml(data.sender || 'Ses Mesajı')}<span class="language-badge">${escapeHtml(displayLang)}</span></span>
+      <span class="card-sender">${escapeHtml(data.sender || 'Mesaj')}<span class="language-badge">${escapeHtml(displayLang)}</span></span>
       <span class="card-time">${time}</span>
     </div>
     <div class="original-label">🗣️ Orijinal</div>
@@ -181,7 +181,10 @@ function showTranslation(data) {
         <div class="reply-result" id="reply-result-${cardId}">
           <div class="reply-result-label" id="reply-label-${cardId}">📤 Çeviri</div>
           <div class="reply-result-text" id="reply-text-${cardId}"></div>
-          <button class="copy-btn" data-card="${cardId}">📋 Kopyala</button>
+          <div style="display:flex;gap:6px;margin-top:8px;">
+            <button class="copy-btn" data-card="${cardId}">📋 Kopyala</button>
+            <button class="paste-btn" data-card="${cardId}">📤 Yapıştır</button>
+          </div>
         </div>
       </div>
     </div>
@@ -193,8 +196,11 @@ function showTranslation(data) {
   const replyToggle = card.querySelector('.reply-toggle');
   const copyBtn = card.querySelector('.copy-btn');
 
+  const pasteBtn = card.querySelector('.paste-btn');
+
   replyToggle.addEventListener('click', () => toggleReply(cardId));
   copyBtn.addEventListener('click', (e) => copyToClipboard(cardId, e.target));
+  pasteBtn.addEventListener('click', (e) => pasteToInput(cardId, e.target));
 
   if (replyLang) {
     // Known language - direct button
@@ -287,6 +293,29 @@ async function translateReply(cardId, targetLanguage, btnElement) {
     if (btnElement) {
       btnElement.disabled = false;
       btnElement.textContent = `🌐 ${effectiveLang}'ya Çevir`;
+    }
+  }
+}
+
+async function pasteToInput(cardId, btnElement) {
+  const resultText = document.getElementById(`reply-text-${cardId}`);
+
+  if (resultText && resultText.textContent) {
+    try {
+      chrome.runtime.sendMessage({
+        type: 'PASTE_TO_INPUT',
+        text: resultText.textContent
+      }, (response) => {
+        if (response?.success) {
+          btnElement.textContent = '✅ Yapıştırıldı';
+          setTimeout(() => { btnElement.textContent = '📤 Yapıştır'; }, 2000);
+        } else {
+          btnElement.textContent = '❌ Hata';
+          setTimeout(() => { btnElement.textContent = '📤 Yapıştır'; }, 2000);
+        }
+      });
+    } catch (err) {
+      console.error('[SidePanel] Paste failed:', err);
     }
   }
 }

@@ -352,6 +352,173 @@ Türkçe metin: ${text}`
   }
 });
 
+// Text message translation endpoint (foreign language -> Turkish)
+app.post('/translate-message', express.json(), async (req, res) => {
+  try {
+    const { text, context } = req.body;
+
+    if (!text) {
+      return res.status(400).json({ error: 'Metin gerekli' });
+    }
+
+    console.log(`📝 Translating message to Turkish: "${text.substring(0, 50)}..."`);
+    if (context && context.length > 0) {
+      console.log(`📎 With ${context.length} context messages`);
+    }
+
+    // Build context section for prompt
+    let contextSection = '';
+    if (context && Array.isArray(context) && context.length > 0) {
+      const contextLines = context.map(m => `${m.sender}: ${m.text}`).join('\n');
+      contextSection = `\nHere is the recent conversation for context (to help with ambiguous words, pronouns, slang):\n---\n${contextLines}\n---\nNow translate the following message considering this conversation context:\n`;
+    }
+
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+
+    const result = await model.generateContent([
+      {
+        text: `Analyze this text and respond ONLY with valid JSON in this exact format:
+{"detected_language":"English","original_text":"the original text","turkish_translation":"Turkish translation"}
+
+Rules:
+- detected_language must be the full name of the detected language (e.g. Arabic, English, German, French, Spanish, Russian, Persian, Urdu, Hindi, Turkish, Kurdish, Chinese, Japanese, Korean, etc.)
+- original_text is the input text as-is
+- turkish_translation must be natural Turkish translation
+- If the text is already Turkish, set detected_language to "Turkish" and copy original_text to turkish_translation
+- Use the conversation context (if provided) to better understand ambiguous words, pronouns, and slang, but ONLY translate the target text
+- Return ONLY the JSON, no markdown, no explanation
+${contextSection}
+Text: ${text}`
+      }
+    ]);
+
+    const response = await result.response;
+    const responseText = response.text();
+
+    let parsedResponse;
+    try {
+      let jsonText = responseText;
+      if (jsonText.includes('```json')) {
+        jsonText = jsonText.replace(/```json\n?/g, '').replace(/```\n?/g, '');
+      } else if (jsonText.includes('```')) {
+        jsonText = jsonText.replace(/```\n?/g, '');
+      }
+      parsedResponse = JSON.parse(jsonText.trim());
+    } catch (parseError) {
+      console.error('❌ Failed to parse Gemini response:', parseError);
+      parsedResponse = {
+        detected_language: 'Unknown',
+        original_text: text,
+        turkish_translation: text
+      };
+    }
+
+    const originalText = parsedResponse.original_text || text;
+    const turkishText = parsedResponse.turkish_translation || '';
+    let detectedLanguage = parsedResponse.detected_language || '';
+
+    if (!detectedLanguage || detectedLanguage === 'Unknown') {
+      const inferredLang = detectLanguageFromScript(originalText);
+      if (inferredLang) {
+        detectedLanguage = inferredLang;
+      } else {
+        detectedLanguage = 'Unknown';
+      }
+    }
+
+    const turkishLangName = languageNames[detectedLanguage.toLowerCase()] || detectedLanguage;
+
+    console.log(`✅ Message translated: ${turkishLangName} → Türkçe`);
+
+    res.json({
+      success: true,
+      original: originalText,
+      translation: turkishText,
+      detectedLanguage: turkishLangName
+    });
+
+  } catch (error) {
+    console.error('❌ Message translation error:', error);
+    res.status(500).json({
+      error: error.message || 'Çeviri işlemi başarısız oldu'
+    });
+  }
+});
+
+// Image OCR + translation endpoint
+app.post('/translate-image', express.json({ limit: '10mb' }), async (req, res) => {
+  try {
+    const { image, mimeType } = req.body;
+
+    if (!image) {
+      return res.status(400).json({ error: 'Resim verisi gerekli' });
+    }
+
+    console.log(`🖼️ Translating image (${(image.length / 1024).toFixed(1)} KB base64)...`);
+
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+
+    const result = await model.generateContent([
+      {
+        inlineData: {
+          mimeType: mimeType || 'image/jpeg',
+          data: image
+        }
+      },
+      {
+        text: `Look at this image. If there is any text in the image, extract it and translate to Turkish.
+Respond ONLY with valid JSON in this exact format:
+{"detected_language":"English","original_text":"extracted text","turkish_translation":"Turkish translation"}
+
+Rules:
+- detected_language: the language of the text found in the image
+- original_text: the exact text extracted from the image
+- turkish_translation: natural Turkish translation
+- If no text is found in the image, return: {"detected_language":"none","original_text":"","turkish_translation":"Resimde metin bulunamadı"}
+- If text is already Turkish, copy to turkish_translation
+- Return ONLY JSON, no markdown, no explanation`
+      }
+    ]);
+
+    const response = await result.response;
+    const responseText = response.text();
+
+    let parsedResponse;
+    try {
+      let jsonText = responseText;
+      if (jsonText.includes('```json')) {
+        jsonText = jsonText.replace(/```json\n?/g, '').replace(/```\n?/g, '');
+      } else if (jsonText.includes('```')) {
+        jsonText = jsonText.replace(/```\n?/g, '');
+      }
+      parsedResponse = JSON.parse(jsonText.trim());
+    } catch (parseError) {
+      parsedResponse = {
+        detected_language: 'Unknown',
+        original_text: responseText,
+        turkish_translation: responseText
+      };
+    }
+
+    const turkishLangName = languageNames[parsedResponse.detected_language?.toLowerCase()] || parsedResponse.detected_language;
+
+    console.log(`✅ Image translated: ${turkishLangName}`);
+
+    res.json({
+      success: true,
+      original: parsedResponse.original_text || '',
+      translation: parsedResponse.turkish_translation || '',
+      detectedLanguage: turkishLangName
+    });
+
+  } catch (error) {
+    console.error('❌ Image translation error:', error);
+    res.status(500).json({
+      error: error.message || 'Resim çevirisi başarısız oldu'
+    });
+  }
+});
+
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error('Server error:', err);

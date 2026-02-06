@@ -353,6 +353,24 @@
       color: #fff;
     }
 
+    .paste-btn {
+      background: #25D366;
+      border: none;
+      color: #fff;
+      font-size: 11px;
+      padding: 4px 8px;
+      border-radius: 4px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      transition: all 0.2s;
+    }
+
+    .paste-btn:hover {
+      background: #20bd5a;
+    }
+
     /* Loading state */
     .loading-card {
       background: #2d2d2d;
@@ -420,19 +438,19 @@
 </head>
 <body>
   <div class="header">
-    <div class="header-icon">🎙️</div>
+    <div class="header-icon">🌐</div>
     <div>
       <div class="header-title">WhatsApp Çevirmen</div>
-      <div class="header-subtitle">Otomatik Dil Algılama → Türkçe</div>
+      <div class="header-subtitle">Ses & Metin → Türkçe</div>
     </div>
   </div>
 
   <div class="content">
     <div id="translations" class="translations">
       <div class="empty-state" id="emptyState">
-        <div class="empty-icon">🎵</div>
+        <div class="empty-icon">🌐</div>
         <div class="empty-text">
-          Ses mesajının yanındaki<br>
+          Ses veya metin mesajının yanındaki<br>
           <strong>🌐 Çevir</strong> butonuna tıklayın
         </div>
       </div>
