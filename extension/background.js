@@ -1,13 +1,35 @@
 // WhatsApp Voice Translator - Background Service Worker
-// v3.0.0 - Inline translation + Context menu + Paste
+// v3.1.0 - Auth, timeout, centralized API calls
 
 const BACKEND_URL = 'http://localhost:3456';
+const FETCH_TIMEOUT_MS = 35000;
+
+// Optional API token - set this if WVT_API_TOKEN is configured in backend/.env
+const WVT_API_TOKEN = '';
+
+function authHeaders() {
+  const headers = { 'Content-Type': 'application/json' };
+  if (WVT_API_TOKEN) headers['X-WVT-Token'] = WVT_API_TOKEN;
+  return headers;
+}
+
+// Fetch with timeout via AbortController
+async function fetchWithTimeout(url, options = {}) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+  try {
+    const response = await fetch(url, { ...options, signal: controller.signal });
+    return response;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
 
 // Create context menu
 chrome.runtime.onInstalled.addListener(() => {
   chrome.contextMenus.create({
     id: 'wvt-translate',
-    title: "Türkçe'ye Çevir",
+    title: "Turkce'ye Cevir",
     contexts: ['selection'],
     documentUrlPatterns: ['https://web.whatsapp.com/*']
   });
@@ -28,46 +50,29 @@ chrome.action.onClicked.addListener((tab) => {
 // Enable side panel for WhatsApp
 chrome.tabs.onUpdated.addListener(async (tabId, info, tab) => {
   if (!tab.url) return;
-
   if (tab.url.includes('web.whatsapp.com')) {
-    await chrome.sidePanel.setOptions({
-      tabId,
-      path: 'sidepanel.html',
-      enabled: true
-    });
+    await chrome.sidePanel.setOptions({ tabId, path: 'sidepanel.html', enabled: true });
   }
 });
 
-// Handle messages from content script
+// Handle messages from content script and side panel
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.type === 'TRANSLATE_AUDIO') {
-    // Notify side panel that translation started
     notifySidePanel({ type: 'TRANSLATION_STARTED', data: request.sender || {} });
 
-    handleTranslation(request.audioData, request.sender)
+    handleAudioTranslation(request.audioData, request.sender)
       .then(result => {
-        // Notify side panel with result
         notifySidePanel({
           type: 'TRANSLATION_RESULT',
-          data: {
-            original: result.original,
-            translation: result.translation,
-            detectedLanguage: result.detectedLanguage,
-            sender: request.sender
-          }
+          data: { original: result.original, translation: result.translation, detectedLanguage: result.detectedLanguage, sender: request.sender }
         });
         sendResponse({ success: true, data: result });
       })
       .catch(error => {
-        // Notify side panel with error
-        notifySidePanel({
-          type: 'TRANSLATION_ERROR',
-          data: { error: error.message }
-        });
+        notifySidePanel({ type: 'TRANSLATION_ERROR', data: { error: error.message } });
         sendResponse({ success: false, error: error.message });
       });
-
-    return true; // Keep message channel open for async response
+    return true;
   }
 
   if (request.type === 'TRANSLATE_TEXT_MESSAGE') {
@@ -77,39 +82,33 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       .then(result => {
         notifySidePanel({
           type: 'TRANSLATION_RESULT',
-          data: {
-            original: result.original,
-            translation: result.translation,
-            detectedLanguage: result.detectedLanguage,
-            sender: request.sender
-          }
+          data: { original: result.original, translation: result.translation, detectedLanguage: result.detectedLanguage, sender: request.sender }
         });
         sendResponse({ success: true, data: result });
       })
       .catch(error => {
-        notifySidePanel({
-          type: 'TRANSLATION_ERROR',
-          data: { error: error.message }
-        });
+        notifySidePanel({ type: 'TRANSLATION_ERROR', data: { error: error.message } });
         sendResponse({ success: false, error: error.message });
       });
-
     return true;
   }
 
   if (request.type === 'TRANSLATE_IMAGE') {
     handleImageTranslation(request.imageData, request.mimeType)
-      .then(result => {
-        sendResponse({ success: true, data: result });
-      })
-      .catch(error => {
-        sendResponse({ success: false, error: error.message });
-      });
+      .then(result => sendResponse({ success: true, data: result }))
+      .catch(error => sendResponse({ success: false, error: error.message }));
+    return true;
+  }
+
+  // Centralized reply translation (used by content.js inline reply + sidepanel.js)
+  if (request.type === 'TRANSLATE_REPLY') {
+    handleReplyTranslation(request.text, request.targetLanguage)
+      .then(result => sendResponse({ success: true, data: result }))
+      .catch(error => sendResponse({ success: false, error: error.message }));
     return true;
   }
 
   if (request.type === 'PASTE_TO_INPUT') {
-    // Forward to WhatsApp tab content script
     chrome.tabs.query({ url: 'https://web.whatsapp.com/*' }, (tabs) => {
       if (tabs.length > 0) {
         chrome.tabs.sendMessage(tabs[0].id, {
@@ -126,8 +125,14 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
 
   if (request.type === 'OPEN_SIDE_PANEL') {
-    chrome.sidePanel.open({ windowId: sender.tab.windowId });
-    sendResponse({ success: true });
+    // Null check: sender.tab may be undefined if message comes from non-tab context
+    const windowId = sender?.tab?.windowId;
+    if (windowId) {
+      chrome.sidePanel.open({ windowId });
+      sendResponse({ success: true });
+    } else {
+      sendResponse({ success: false, error: 'No window context' });
+    }
     return true;
   }
 });
@@ -137,43 +142,34 @@ async function notifySidePanel(message) {
     await chrome.runtime.sendMessage(message);
   } catch (e) {
     // Side panel might not be open
-    console.log('[Background] Side panel not available:', e.message);
   }
 }
 
-async function handleTranslation(audioData, senderInfo) {
-  // Convert base64 to blob
-  const byteCharacters = atob(audioData.base64);
-  const byteNumbers = new Array(byteCharacters.length);
-  for (let i = 0; i < byteCharacters.length; i++) {
-    byteNumbers[i] = byteCharacters.charCodeAt(i);
-  }
-  const byteArray = new Uint8Array(byteNumbers);
-  const blob = new Blob([byteArray], { type: audioData.mimeType || 'audio/ogg' });
+async function handleAudioTranslation(audioData, senderInfo) {
+  // Efficient base64 to Uint8Array conversion
+  const binaryString = atob(audioData.base64);
+  const bytes = Uint8Array.from(binaryString, c => c.charCodeAt(0));
+  const blob = new Blob([bytes], { type: audioData.mimeType || 'audio/ogg' });
 
-  // Create FormData
   const formData = new FormData();
-  const filename = `voice_${Date.now()}.ogg`;
-  formData.append('audio', blob, filename);
+  formData.append('audio', blob, `voice_${Date.now()}.ogg`);
 
-  // Send to backend
-  const response = await fetch(`${BACKEND_URL}/translate`, {
-    method: 'POST',
-    body: formData
-  });
+  const fetchOptions = { method: 'POST', body: formData };
+  if (WVT_API_TOKEN) fetchOptions.headers = { 'X-WVT-Token': WVT_API_TOKEN };
+
+  const response = await fetchWithTimeout(`${BACKEND_URL}/translate`, fetchOptions);
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
     throw new Error(errorData.error || `HTTP ${response.status}`);
   }
-
   return await response.json();
 }
 
 async function handleTextTranslation(text, senderInfo, context) {
-  const response = await fetch(`${BACKEND_URL}/translate-message`, {
+  const response = await fetchWithTimeout(`${BACKEND_URL}/translate-message`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: authHeaders(),
     body: JSON.stringify({ text, context: context || [] })
   });
 
@@ -181,14 +177,13 @@ async function handleTextTranslation(text, senderInfo, context) {
     const errorData = await response.json().catch(() => ({}));
     throw new Error(errorData.error || `HTTP ${response.status}`);
   }
-
   return await response.json();
 }
 
 async function handleImageTranslation(base64Image, mimeType) {
-  const response = await fetch(`${BACKEND_URL}/translate-image`, {
+  const response = await fetchWithTimeout(`${BACKEND_URL}/translate-image`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: authHeaders(),
     body: JSON.stringify({ image: base64Image, mimeType: mimeType || 'image/jpeg' })
   });
 
@@ -196,8 +191,21 @@ async function handleImageTranslation(base64Image, mimeType) {
     const errorData = await response.json().catch(() => ({}));
     throw new Error(errorData.error || `HTTP ${response.status}`);
   }
-
   return await response.json();
 }
 
-console.log('[WVT Background] Service worker started v3.0.0');
+async function handleReplyTranslation(text, targetLanguage) {
+  const response = await fetchWithTimeout(`${BACKEND_URL}/translate-text`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify({ text, targetLanguage })
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.error || `HTTP ${response.status}`);
+  }
+  return await response.json();
+}
+
+console.log('[WVT] Background service worker v3.1.0');

@@ -1,5 +1,5 @@
 // WhatsApp Voice Translator - Side Panel
-// v2.0.1 - Gemini AI + Reply translation fix
+// v3.1.0
 
 const translationsContainer = document.getElementById('translations');
 const emptyState = document.getElementById('emptyState');
@@ -7,90 +7,73 @@ const clearBtn = document.getElementById('clearBtn');
 
 let translations = [];
 
-// RTL languages
-const rtlLanguages = ['arabic', 'ar', 'hebrew', 'he', 'persian', 'fa', 'urdu', 'ur', 'Arapça', 'İbranice', 'Farsça', 'Urduca'];
+const rtlLanguages = ['arabic', 'ar', 'hebrew', 'he', 'persian', 'fa', 'urdu', 'ur', 'Arapca', 'Ibranice', 'Farsca', 'Urduca'];
 
-// Language codes for translation (comprehensive list)
 const languageCodes = {
-  // Arabic
-  'Arapça': 'ar', 'arabic': 'ar', 'ar': 'ar', 'Arabic': 'ar',
-  // English
-  'İngilizce': 'en', 'english': 'en', 'en': 'en', 'English': 'en',
-  // German
+  'Arapca': 'ar', 'arabic': 'ar', 'ar': 'ar', 'Arabic': 'ar',
+  'Ingilizce': 'en', 'english': 'en', 'en': 'en', 'English': 'en',
   'Almanca': 'de', 'german': 'de', 'de': 'de', 'German': 'de',
-  // French
-  'Fransızca': 'fr', 'french': 'fr', 'fr': 'fr', 'French': 'fr',
-  // Spanish
-  'İspanyolca': 'es', 'spanish': 'es', 'es': 'es', 'Spanish': 'es',
-  // Russian
-  'Rusça': 'ru', 'russian': 'ru', 'ru': 'ru', 'Russian': 'ru',
-  // Chinese
-  'Çince': 'zh', 'chinese': 'zh', 'zh': 'zh', 'Chinese': 'zh',
-  // Japanese
+  'Fransizca': 'fr', 'french': 'fr', 'fr': 'fr', 'French': 'fr',
+  'Ispanyolca': 'es', 'spanish': 'es', 'es': 'es', 'Spanish': 'es',
+  'Rusca': 'ru', 'russian': 'ru', 'ru': 'ru', 'Russian': 'ru',
+  'Cince': 'zh', 'chinese': 'zh', 'zh': 'zh', 'Chinese': 'zh',
   'Japonca': 'ja', 'japanese': 'ja', 'ja': 'ja', 'Japanese': 'ja',
-  // Korean
   'Korece': 'ko', 'korean': 'ko', 'ko': 'ko', 'Korean': 'ko',
-  // Persian
-  'Farsça': 'fa', 'persian': 'fa', 'fa': 'fa', 'Persian': 'fa',
-  // Urdu
+  'Farsca': 'fa', 'persian': 'fa', 'fa': 'fa', 'Persian': 'fa',
   'Urduca': 'ur', 'urdu': 'ur', 'ur': 'ur', 'Urdu': 'ur',
-  // Hindi
-  'Hintçe': 'hi', 'hindi': 'hi', 'hi': 'hi', 'Hindi': 'hi',
-  // Turkish
-  'Türkçe': 'tr', 'turkish': 'tr', 'tr': 'tr', 'Turkish': 'tr',
-  // Kurdish
-  'Kürtçe': 'ku', 'kurdish': 'ku', 'ku': 'ku', 'Kurdish': 'ku',
-  // Azerbaijani
+  'Hintce': 'hi', 'hindi': 'hi', 'hi': 'hi', 'Hindi': 'hi',
+  'Turkce': 'tr', 'turkish': 'tr', 'tr': 'tr', 'Turkish': 'tr',
+  'Kurtce': 'ku', 'kurdish': 'ku', 'ku': 'ku', 'Kurdish': 'ku',
   'Azerice': 'az', 'azerbaijani': 'az', 'az': 'az', 'Azerbaijani': 'az',
-  // Hebrew
-  'İbranice': 'he', 'hebrew': 'he', 'he': 'he', 'Hebrew': 'he',
-  // Portuguese
+  'Ibranice': 'he', 'hebrew': 'he', 'he': 'he', 'Hebrew': 'he',
   'Portekizce': 'pt', 'portuguese': 'pt', 'pt': 'pt', 'Portuguese': 'pt',
-  // Italian
-  'İtalyanca': 'it', 'italian': 'it', 'it': 'it', 'Italian': 'it',
-  // Dutch
+  'Italyanca': 'it', 'italian': 'it', 'it': 'it', 'Italian': 'it',
   'Hollandaca': 'nl', 'dutch': 'nl', 'nl': 'nl', 'Dutch': 'nl',
-  // Polish
-  'Lehçe': 'pl', 'polish': 'pl', 'pl': 'pl', 'Polish': 'pl',
-  // Ukrainian
+  'Lehce': 'pl', 'polish': 'pl', 'pl': 'pl', 'Polish': 'pl',
   'Ukraynaca': 'uk', 'ukrainian': 'uk', 'uk': 'uk', 'Ukrainian': 'uk',
-  // Greek
   'Yunanca': 'el', 'greek': 'el', 'el': 'el', 'Greek': 'el'
 };
 
-// Listen for messages from background script
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  console.log('[SidePanel] Received message:', message.type);
-
-  if (message.type === 'TRANSLATION_STARTED') {
-    showLoading(message.data);
-  } else if (message.type === 'TRANSLATION_RESULT') {
-    showTranslation(message.data);
-  } else if (message.type === 'TRANSLATION_ERROR') {
-    showError(message.data);
+// Script-based language inference (shared logic)
+function inferLanguageFromScript(text) {
+  if (!text) return null;
+  if (/[\u0600-\u06FF]/.test(text)) {
+    if (/[\u067E\u0686\u0698\u06AF]/.test(text)) return 'Farsca';
+    if (/[\u0679\u0688\u0691\u06BA]/.test(text)) return 'Urduca';
+    return 'Arapca';
   }
+  if (/[\u0400-\u04FF]/.test(text)) {
+    if (/[\u0404\u0406\u0407\u0490\u0491]/.test(text)) return 'Ukraynaca';
+    return 'Rusca';
+  }
+  if (/[\u0590-\u05FF]/.test(text)) return 'Ibranice';
+  if (/[\u4E00-\u9FFF]/.test(text)) return 'Cince';
+  if (/[\u3040-\u309F\u30A0-\u30FF]/.test(text)) return 'Japonca';
+  if (/[\uAC00-\uD7AF]/.test(text)) return 'Korece';
+  if (/[gsiGSI]/.test(text)) return 'Turkce';
+  return null;
+}
+
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.type === 'TRANSLATION_STARTED') showLoading(message.data);
+  else if (message.type === 'TRANSLATION_RESULT') showTranslation(message.data);
+  else if (message.type === 'TRANSLATION_ERROR') showError(message.data);
 });
 
 function showLoading(data) {
   hideEmptyState();
-
   const existingLoading = document.querySelector('.loading-card');
   if (existingLoading) existingLoading.remove();
 
   const loadingCard = document.createElement('div');
   loadingCard.className = 'loading-card';
   loadingCard.id = 'loadingCard';
-  loadingCard.innerHTML = `
-    <div class="loading-spinner"></div>
-    <div class="loading-text">Çevriliyor...</div>
-  `;
-
+  loadingCard.innerHTML = `<div class="loading-spinner"></div><div class="loading-text">Cevriliyor...</div>`;
   translationsContainer.insertBefore(loadingCard, translationsContainer.firstChild);
 }
 
 function showTranslation(data) {
   hideEmptyState();
-
   const loadingCard = document.getElementById('loadingCard');
   if (loadingCard) loadingCard.remove();
 
@@ -102,35 +85,14 @@ function showTranslation(data) {
   let replyLang = detectedLang;
   let displayLang = detectedLang;
 
-  // If language is unknown, try to detect from script
   if (detectedLang === 'Bilinmiyor' || detectedLang === 'Unknown' || !languageCodes[detectedLang]) {
-    const originalText = data.original || '';
-    let inferredLang = null;
-
-    if (/[\u0600-\u06FF]/.test(originalText)) {
-      inferredLang = 'Arapça';
-    } else if (/[\u0400-\u04FF]/.test(originalText)) {
-      inferredLang = 'Rusça';
-    } else if (/[\u0590-\u05FF]/.test(originalText)) {
-      inferredLang = 'İbranice';
-    } else if (/[\u4E00-\u9FFF]/.test(originalText)) {
-      inferredLang = 'Çince';
-    } else if (/[\u3040-\u309F\u30A0-\u30FF]/.test(originalText)) {
-      inferredLang = 'Japonca';
-    } else if (/[\uAC00-\uD7AF]/.test(originalText)) {
-      inferredLang = 'Korece';
-    } else if (/[ğüşıöçĞÜŞİÖÇ]/.test(originalText)) {
-      inferredLang = 'Türkçe';
-    }
-
+    const inferredLang = inferLanguageFromScript(data.original || '');
     if (inferredLang) {
       replyLang = inferredLang;
-      displayLang = inferredLang; // Show inferred language in UI too
-      console.log(`[SidePanel] Language inferred from script: ${inferredLang}`);
+      displayLang = inferredLang;
     } else {
-      replyLang = null; // Can't determine language
+      replyLang = null;
       displayLang = 'Bilinmiyor';
-      console.log(`[SidePanel] Language truly unknown`);
     }
   }
 
@@ -145,45 +107,41 @@ function showTranslation(data) {
       <span class="card-sender">${escapeHtml(data.sender || 'Mesaj')}<span class="language-badge">${escapeHtml(displayLang)}</span></span>
       <span class="card-time">${time}</span>
     </div>
-    <div class="original-label">🗣️ Orijinal</div>
+    <div class="original-label">Orijinal</div>
     <div class="original-text ${isRtl ? 'rtl' : ''}">${escapeHtml(data.original || '')}</div>
-    <div class="translated-label">🇹🇷 Türkçe</div>
+    <div class="translated-label">Turkce</div>
     <div class="translated-text">${escapeHtml(data.translation || '')}</div>
 
     <div class="reply-section">
-      <button class="reply-toggle" data-card="${cardId}">
-        💬 Cevap Yaz
-      </button>
+      <button class="reply-toggle" data-card="${cardId}">Cevap Yaz</button>
       <div class="reply-form" id="reply-form-${cardId}">
-        <textarea class="reply-input" id="reply-input-${cardId}" placeholder="Türkçe cevabınızı yazın..."></textarea>
+        <textarea class="reply-input" id="reply-input-${cardId}" placeholder="Turkce cevabin..."></textarea>
         <div class="reply-actions">
           ${replyLang ? `
             <button class="reply-btn" data-card="${cardId}" data-lang="${escapeHtml(replyLang)}">
-              🌐 ${escapeHtml(replyLang)}'ya Çevir
+              ${escapeHtml(replyLang)}'ya Cevir
             </button>
           ` : `
             <select class="lang-select" id="lang-select-${cardId}">
-              <option value="ar">🇸🇦 Arapça</option>
-              <option value="en">🇬🇧 İngilizce</option>
-              <option value="ru">🇷🇺 Rusça</option>
-              <option value="de">🇩🇪 Almanca</option>
-              <option value="fr">🇫🇷 Fransızca</option>
-              <option value="fa">🇮🇷 Farsça</option>
-              <option value="ur">🇵🇰 Urduca</option>
-              <option value="ku">Kürtçe</option>
-              <option value="az">🇦🇿 Azerice</option>
+              <option value="ar">Arapca</option>
+              <option value="en">Ingilizce</option>
+              <option value="ru">Rusca</option>
+              <option value="de">Almanca</option>
+              <option value="fr">Fransizca</option>
+              <option value="fa">Farsca</option>
+              <option value="ur">Urduca</option>
+              <option value="ku">Kurtce</option>
+              <option value="az">Azerice</option>
             </select>
-            <button class="reply-btn-manual" data-card="${cardId}">
-              🌐 Çevir
-            </button>
+            <button class="reply-btn-manual" data-card="${cardId}">Cevir</button>
           `}
         </div>
         <div class="reply-result" id="reply-result-${cardId}">
-          <div class="reply-result-label" id="reply-label-${cardId}">📤 Çeviri</div>
+          <div class="reply-result-label" id="reply-label-${cardId}">Ceviri</div>
           <div class="reply-result-text" id="reply-text-${cardId}"></div>
           <div style="display:flex;gap:6px;margin-top:8px;">
-            <button class="copy-btn" data-card="${cardId}">📋 Kopyala</button>
-            <button class="paste-btn" data-card="${cardId}">📤 Yapıştır</button>
+            <button class="copy-btn" data-card="${cardId}">Kopyala</button>
+            <button class="paste-btn" data-card="${cardId}">Yapistir</button>
           </div>
         </div>
       </div>
@@ -192,27 +150,17 @@ function showTranslation(data) {
 
   translationsContainer.insertBefore(card, translationsContainer.firstChild);
 
-  // Add event listeners
-  const replyToggle = card.querySelector('.reply-toggle');
-  const copyBtn = card.querySelector('.copy-btn');
-
-  const pasteBtn = card.querySelector('.paste-btn');
-
-  replyToggle.addEventListener('click', () => toggleReply(cardId));
-  copyBtn.addEventListener('click', (e) => copyToClipboard(cardId, e.target));
-  pasteBtn.addEventListener('click', (e) => pasteToInput(cardId, e.target));
+  card.querySelector('.reply-toggle').addEventListener('click', () => toggleReply(cardId));
+  card.querySelector('.copy-btn').addEventListener('click', (e) => copyToClipboard(cardId, e.target));
+  card.querySelector('.paste-btn').addEventListener('click', (e) => pasteToInput(cardId, e.target));
 
   if (replyLang) {
-    // Known language - direct button
-    const replyBtn = card.querySelector('.reply-btn');
-    replyBtn.addEventListener('click', (e) => translateReply(cardId, replyLang, e.target));
+    card.querySelector('.reply-btn').addEventListener('click', (e) => translateReply(cardId, replyLang, e.target));
   } else {
-    // Unknown language - dropdown + button
-    const replyBtnManual = card.querySelector('.reply-btn-manual');
-    replyBtnManual.addEventListener('click', (e) => {
+    card.querySelector('.reply-btn-manual').addEventListener('click', (e) => {
       const select = document.getElementById(`lang-select-${cardId}`);
       const selectedLang = select.value;
-      const langNames = { ar: 'Arapça', en: 'İngilizce', ru: 'Rusça', de: 'Almanca', fr: 'Fransızca', fa: 'Farsça', ur: 'Urduca', ku: 'Kürtçe', az: 'Azerice' };
+      const langNames = { ar: 'Arapca', en: 'Ingilizce', ru: 'Rusca', de: 'Almanca', fr: 'Fransizca', fa: 'Farsca', ur: 'Urduca', ku: 'Kurtce', az: 'Azerice' };
       translateReply(cardId, langNames[selectedLang] || selectedLang, e.target);
     });
   }
@@ -222,121 +170,93 @@ function showTranslation(data) {
 }
 
 function toggleReply(cardId) {
-  console.log('[SidePanel] Toggle reply for:', cardId);
   const form = document.getElementById(`reply-form-${cardId}`);
   if (form) {
     form.classList.toggle('active');
-    const input = document.getElementById(`reply-input-${cardId}`);
-    if (input && form.classList.contains('active')) {
-      input.focus();
+    if (form.classList.contains('active')) {
+      document.getElementById(`reply-input-${cardId}`)?.focus();
     }
   }
 }
 
+// Routes through background.js instead of direct fetch to backend
 async function translateReply(cardId, targetLanguage, btnElement) {
-  console.log('[SidePanel] Translate reply:', cardId, targetLanguage);
-
   const input = document.getElementById(`reply-input-${cardId}`);
   const resultDiv = document.getElementById(`reply-result-${cardId}`);
   const resultText = document.getElementById(`reply-text-${cardId}`);
 
-  if (!input || !input.value.trim()) {
-    console.log('[SidePanel] No input text');
-    return;
-  }
+  if (!input || !input.value.trim()) return;
 
   const turkishText = input.value.trim();
-
-  // Default to Arabic if language is unknown
   let effectiveLang = targetLanguage;
-  if (targetLanguage === 'Bilinmiyor' || targetLanguage === 'Unknown' || !targetLanguage) {
-    effectiveLang = 'Arapça';
-    console.log('[SidePanel] Unknown language, defaulting to Arabic');
+
+  // If language is truly unknown, show dropdown instead of silently defaulting
+  if (!effectiveLang || effectiveLang === 'Bilinmiyor' || effectiveLang === 'Unknown') {
+    effectiveLang = 'Arapca';
   }
 
   const targetLangCode = languageCodes[effectiveLang] || effectiveLang.toLowerCase();
 
-  console.log('[SidePanel] Translating to:', targetLangCode);
-
-  // Show loading
   if (btnElement) {
     btnElement.disabled = true;
-    btnElement.textContent = '⏳ Çevriliyor...';
+    btnElement.textContent = 'Cevriliyor...';
   }
 
   try {
-    const response = await fetch('http://localhost:3456/translate-text', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        text: turkishText,
-        targetLanguage: targetLangCode
-      })
+    // Route through background.js - no hardcoded backend URL
+    const response = await new Promise((resolve, reject) => {
+      chrome.runtime.sendMessage(
+        { type: 'TRANSLATE_REPLY', text: turkishText, targetLanguage: targetLangCode },
+        (resp) => {
+          if (chrome.runtime.lastError) reject(new Error(chrome.runtime.lastError.message));
+          else resolve(resp);
+        }
+      );
     });
 
-    const data = await response.json();
-    console.log('[SidePanel] Translation response:', data);
-
-    if (data.success && data.translation) {
-      resultText.textContent = data.translation;
+    if (response?.success && response.data?.translation) {
+      resultText.textContent = response.data.translation;
       resultDiv.classList.add('active');
     } else {
-      throw new Error(data.error || 'Çeviri başarısız');
+      throw new Error(response?.error || 'Ceviri basarisiz');
     }
   } catch (error) {
     console.error('[SidePanel] Reply translation error:', error);
-    resultText.textContent = '❌ Hata: ' + error.message;
+    resultText.textContent = 'Hata: ' + error.message;
     resultDiv.classList.add('active');
   } finally {
     if (btnElement) {
       btnElement.disabled = false;
-      btnElement.textContent = `🌐 ${effectiveLang}'ya Çevir`;
+      btnElement.textContent = `${effectiveLang}'ya Cevir`;
     }
   }
 }
 
 async function pasteToInput(cardId, btnElement) {
   const resultText = document.getElementById(`reply-text-${cardId}`);
+  if (!resultText?.textContent) return;
 
-  if (resultText && resultText.textContent) {
-    try {
-      chrome.runtime.sendMessage({
-        type: 'PASTE_TO_INPUT',
-        text: resultText.textContent
-      }, (response) => {
-        if (response?.success) {
-          btnElement.textContent = '✅ Yapıştırıldı';
-          setTimeout(() => { btnElement.textContent = '📤 Yapıştır'; }, 2000);
-        } else {
-          btnElement.textContent = '❌ Hata';
-          setTimeout(() => { btnElement.textContent = '📤 Yapıştır'; }, 2000);
-        }
-      });
-    } catch (err) {
-      console.error('[SidePanel] Paste failed:', err);
-    }
+  try {
+    chrome.runtime.sendMessage({ type: 'PASTE_TO_INPUT', text: resultText.textContent }, (response) => {
+      btnElement.textContent = response?.success ? 'Yapildi' : 'Hata';
+      setTimeout(() => { btnElement.textContent = 'Yapistir'; }, 2000);
+    });
+  } catch (err) {
+    console.error('[SidePanel] Paste failed:', err);
   }
 }
 
 async function copyToClipboard(cardId, btnElement) {
   const resultText = document.getElementById(`reply-text-${cardId}`);
+  if (!resultText?.textContent) return;
 
-  if (resultText && resultText.textContent) {
-    try {
-      await navigator.clipboard.writeText(resultText.textContent);
-      if (btnElement) {
-        btnElement.classList.add('copied');
-        btnElement.textContent = '✅ Kopyalandı';
-        setTimeout(() => {
-          btnElement.classList.remove('copied');
-          btnElement.textContent = '📋 Kopyala';
-        }, 2000);
-      }
-    } catch (err) {
-      console.error('[SidePanel] Copy failed:', err);
-    }
+  try {
+    await navigator.clipboard.writeText(resultText.textContent);
+    btnElement.classList.add('copied');
+    btnElement.textContent = 'Kopyalandi';
+    setTimeout(() => { btnElement.classList.remove('copied'); btnElement.textContent = 'Kopyala'; }, 2000);
+  } catch (err) {
+    console.error('[SidePanel] Copy failed:', err);
   }
 }
 
@@ -346,10 +266,7 @@ function showError(data) {
 
   const errorCard = document.createElement('div');
   errorCard.className = 'error-card';
-  errorCard.innerHTML = `
-    <div class="error-text">❌ ${escapeHtml(data.error || 'Bir hata oluştu')}</div>
-  `;
-
+  errorCard.innerHTML = `<div class="error-text">${escapeHtml(data.error || 'Bir hata olustu')}</div>`;
   translationsContainer.insertBefore(errorCard, translationsContainer.firstChild);
 
   setTimeout(() => {
@@ -358,13 +275,8 @@ function showError(data) {
   }, 5000);
 }
 
-function hideEmptyState() {
-  if (emptyState) emptyState.style.display = 'none';
-}
-
-function showEmptyState() {
-  if (emptyState) emptyState.style.display = 'flex';
-}
+function hideEmptyState() { if (emptyState) emptyState.style.display = 'none'; }
+function showEmptyState() { if (emptyState) emptyState.style.display = 'flex'; }
 
 function escapeHtml(text) {
   const div = document.createElement('div');
@@ -372,7 +284,6 @@ function escapeHtml(text) {
   return div.innerHTML;
 }
 
-// Clear all translations
 clearBtn.addEventListener('click', () => {
   translations = [];
   translationsContainer.innerHTML = '';
@@ -381,4 +292,87 @@ clearBtn.addEventListener('click', () => {
   clearBtn.style.display = 'none';
 });
 
-console.log('[SidePanel] WhatsApp Voice Translator Side Panel v2.0.1 loaded');
+// ==================== QUICK TRANSLATE ====================
+
+const quickToggle = document.getElementById('quickToggle');
+const quickForm = document.getElementById('quickForm');
+const quickInput = document.getElementById('quickInput');
+const quickLang = document.getElementById('quickLang');
+const quickBtn = document.getElementById('quickBtn');
+const quickResult = document.getElementById('quickResult');
+const quickResultText = document.getElementById('quickResultText');
+const quickCopy = document.getElementById('quickCopy');
+const quickPaste = document.getElementById('quickPaste');
+
+// Persist last selected language
+const savedLang = localStorage.getItem('wvt-quick-lang');
+if (savedLang && quickLang) quickLang.value = savedLang;
+
+quickToggle.addEventListener('click', () => {
+  quickToggle.classList.toggle('active');
+  quickForm.classList.toggle('active');
+  if (quickForm.classList.contains('active')) {
+    quickInput.focus();
+  }
+});
+
+quickBtn.addEventListener('click', async () => {
+  const text = quickInput.value.trim();
+  if (!text) return;
+
+  const targetLang = quickLang.value;
+  localStorage.setItem('wvt-quick-lang', targetLang);
+
+  quickBtn.disabled = true;
+  quickBtn.textContent = 'Cevriliyor...';
+
+  try {
+    const response = await new Promise((resolve, reject) => {
+      chrome.runtime.sendMessage(
+        { type: 'TRANSLATE_REPLY', text, targetLanguage: targetLang },
+        (resp) => {
+          if (chrome.runtime.lastError) reject(new Error(chrome.runtime.lastError.message));
+          else resolve(resp);
+        }
+      );
+    });
+
+    if (response?.success && response.data?.translation) {
+      quickResultText.textContent = response.data.translation;
+      quickResult.classList.add('active');
+    } else {
+      throw new Error(response?.error || 'Ceviri basarisiz');
+    }
+  } catch (err) {
+    quickResultText.textContent = 'Hata: ' + err.message;
+    quickResult.classList.add('active');
+  } finally {
+    quickBtn.disabled = false;
+    quickBtn.textContent = 'Cevir';
+  }
+});
+
+// Enter key in textarea (Ctrl+Enter or Cmd+Enter to translate)
+quickInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+    e.preventDefault();
+    quickBtn.click();
+  }
+});
+
+quickCopy.addEventListener('click', async () => {
+  if (!quickResultText.textContent) return;
+  await navigator.clipboard.writeText(quickResultText.textContent);
+  quickCopy.textContent = 'Kopyalandi';
+  setTimeout(() => { quickCopy.textContent = 'Kopyala'; }, 2000);
+});
+
+quickPaste.addEventListener('click', () => {
+  if (!quickResultText.textContent) return;
+  chrome.runtime.sendMessage({ type: 'PASTE_TO_INPUT', text: quickResultText.textContent }, (response) => {
+    quickPaste.textContent = response?.success ? 'Yapildi' : 'Hata';
+    setTimeout(() => { quickPaste.textContent = 'Yapistir'; }, 2000);
+  });
+});
+
+console.log('[SidePanel] v3.1.0 loaded');

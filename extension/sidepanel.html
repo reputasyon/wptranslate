@@ -422,6 +422,141 @@
       transform: scale(1.1);
     }
 
+    /* Quick translate section */
+    .quick-translate {
+      padding: 12px 16px;
+      border-bottom: 1px solid #2d2d2d;
+      background: #1a1a1a;
+    }
+
+    .quick-translate-toggle {
+      width: 100%;
+      background: none;
+      border: 1px solid #3d3d3d;
+      color: #aaa;
+      font-size: 13px;
+      padding: 10px 14px;
+      border-radius: 10px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s;
+    }
+
+    .quick-translate-toggle:hover {
+      background: #2d2d2d;
+      color: #fff;
+      border-color: #25D366;
+    }
+
+    .quick-translate-toggle.active {
+      background: #2d2d2d;
+      color: #fff;
+      border-color: #25D366;
+    }
+
+    .quick-translate-form {
+      display: none;
+      margin-top: 10px;
+    }
+
+    .quick-translate-form.active {
+      display: block;
+    }
+
+    .quick-translate-input {
+      width: 100%;
+      background: #2d2d2d;
+      border: 1px solid #3d3d3d;
+      border-radius: 8px;
+      padding: 10px 12px;
+      color: #fff;
+      font-size: 14px;
+      resize: none;
+      min-height: 56px;
+      margin-bottom: 8px;
+      font-family: inherit;
+    }
+
+    .quick-translate-input:focus {
+      outline: none;
+      border-color: #25D366;
+    }
+
+    .quick-translate-input::placeholder {
+      color: #666;
+    }
+
+    .quick-translate-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .quick-translate-lang {
+      flex: 1;
+      background: #2d2d2d;
+      border: 1px solid #3d3d3d;
+      border-radius: 8px;
+      padding: 8px 10px;
+      color: #fff;
+      font-size: 13px;
+      cursor: pointer;
+    }
+
+    .quick-translate-lang:focus {
+      outline: none;
+      border-color: #25D366;
+    }
+
+    .quick-translate-btn {
+      background: #25D366;
+      border: none;
+      color: #fff;
+      font-size: 13px;
+      font-weight: 500;
+      padding: 8px 20px;
+      border-radius: 8px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.2s;
+    }
+
+    .quick-translate-btn:hover {
+      background: #20bd5a;
+    }
+
+    .quick-translate-btn:disabled {
+      background: #3d3d3d;
+      cursor: not-allowed;
+    }
+
+    .quick-translate-result {
+      display: none;
+      background: #1a3d1a;
+      border-radius: 8px;
+      padding: 10px 12px;
+      border-left: 3px solid #25D366;
+    }
+
+    .quick-translate-result.active {
+      display: block;
+    }
+
+    .quick-translate-result-text {
+      font-size: 14px;
+      color: #fff;
+      line-height: 1.5;
+      margin-bottom: 8px;
+      user-select: all;
+    }
+
+    .quick-translate-result-actions {
+      display: flex;
+      gap: 6px;
+    }
+
     /* Error state */
     .error-card {
       background: #3d2020;
@@ -442,6 +577,54 @@
     <div>
       <div class="header-title">WhatsApp Çevirmen</div>
       <div class="header-subtitle">Ses & Metin → Türkçe</div>
+    </div>
+  </div>
+
+  <div class="quick-translate" id="quickTranslate">
+    <button class="quick-translate-toggle" id="quickToggle">
+      <span>&#x270D;</span> Hizli Ceviri - Turkce'den yaz, hedef dilde gonder
+    </button>
+    <div class="quick-translate-form" id="quickForm">
+      <textarea class="quick-translate-input" id="quickInput" placeholder="Turkce mesajinizi yazin..."></textarea>
+      <div class="quick-translate-row">
+        <select class="quick-translate-lang" id="quickLang">
+          <option value="ar">Arapca</option>
+          <option value="en">Ingilizce</option>
+          <option value="ru">Rusca</option>
+          <option value="de">Almanca</option>
+          <option value="fr">Fransizca</option>
+          <option value="es">Ispanyolca</option>
+          <option value="fa">Farsca</option>
+          <option value="ur">Urduca</option>
+          <option value="hi">Hintce</option>
+          <option value="ku">Kurtce</option>
+          <option value="az">Azerice</option>
+          <option value="he">Ibranice</option>
+          <option value="zh">Cince</option>
+          <option value="ja">Japonca</option>
+          <option value="ko">Korece</option>
+          <option value="pt">Portekizce</option>
+          <option value="it">Italyanca</option>
+          <option value="uk">Ukraynaca</option>
+          <option value="el">Yunanca</option>
+          <option value="nl">Hollandaca</option>
+          <option value="pl">Lehce</option>
+          <option value="bg">Bulgarca</option>
+          <option value="ro">Romence</option>
+          <option value="sr">Sirpca</option>
+          <option value="hr">Hirvatca</option>
+          <option value="bs">Bosnakca</option>
+          <option value="sq">Arnavutca</option>
+        </select>
+        <button class="quick-translate-btn" id="quickBtn">Cevir</button>
+      </div>
+      <div class="quick-translate-result" id="quickResult">
+        <div class="quick-translate-result-text" id="quickResultText"></div>
+        <div class="quick-translate-result-actions">
+          <button class="copy-btn" id="quickCopy">Kopyala</button>
+          <button class="paste-btn" id="quickPaste">Yapistir</button>
+        </div>
+      </div>
     </div>
   </div>
 
