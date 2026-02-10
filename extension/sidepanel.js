@@ -375,4 +375,49 @@ quickPaste.addEventListener('click', () => {
   });
 });
 
-console.log('[SidePanel] v3.1.0 loaded');
+// ==================== API KEY SETTINGS ====================
+
+const settingsToggle = document.getElementById('settingsToggle');
+const settingsForm = document.getElementById('settingsForm');
+const apiKeyInput = document.getElementById('apiKeyInput');
+const apiKeySaveBtn = document.getElementById('apiKeySaveBtn');
+const settingsStatus = document.getElementById('settingsStatus');
+
+// Check if API key exists on load
+chrome.storage.local.get('geminiApiKey', ({ geminiApiKey }) => {
+  if (!geminiApiKey) {
+    settingsToggle.classList.add('warning');
+    settingsToggle.innerHTML = '&#9888; API anahtari gerekli - tiklayip girin';
+    settingsForm.classList.add('active');
+  } else {
+    apiKeyInput.value = geminiApiKey;
+  }
+});
+
+settingsToggle.addEventListener('click', () => {
+  settingsForm.classList.toggle('active');
+});
+
+apiKeySaveBtn.addEventListener('click', () => {
+  const key = apiKeyInput.value.trim();
+  if (!key) {
+    settingsStatus.textContent = 'API anahtari bos olamaz';
+    settingsStatus.style.color = '#ff8a80';
+    settingsStatus.style.display = 'block';
+    return;
+  }
+
+  chrome.storage.local.set({ geminiApiKey: key }, () => {
+    settingsStatus.textContent = 'Kaydedildi';
+    settingsStatus.style.color = '#25D366';
+    settingsStatus.style.display = 'block';
+    settingsToggle.classList.remove('warning');
+    settingsToggle.innerHTML = '&#9881; API Ayarlari';
+    setTimeout(() => {
+      settingsStatus.style.display = 'none';
+      settingsForm.classList.remove('active');
+    }, 1500);
+  });
+});
+
+console.log('[SidePanel] v4.0.0 loaded (serverless)');

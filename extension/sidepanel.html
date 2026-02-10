@@ -569,6 +569,92 @@
       color: #ff8a80;
       font-size: 14px;
     }
+
+    /* Settings */
+    .settings-bar {
+      padding: 8px 16px;
+      border-bottom: 1px solid #2d2d2d;
+      background: #1a1a1a;
+    }
+
+    .settings-toggle {
+      background: none;
+      border: none;
+      color: #666;
+      font-size: 12px;
+      cursor: pointer;
+      padding: 4px 0;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: color 0.2s;
+    }
+
+    .settings-toggle:hover {
+      color: #fff;
+    }
+
+    .settings-toggle.warning {
+      color: #ff8a80;
+    }
+
+    .settings-form {
+      display: none;
+      margin-top: 8px;
+    }
+
+    .settings-form.active {
+      display: block;
+    }
+
+    .settings-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .api-key-input {
+      flex: 1;
+      background: #2d2d2d;
+      border: 1px solid #3d3d3d;
+      border-radius: 6px;
+      padding: 7px 10px;
+      color: #fff;
+      font-size: 12px;
+      font-family: monospace;
+    }
+
+    .api-key-input:focus {
+      outline: none;
+      border-color: #25D366;
+    }
+
+    .api-key-input::placeholder {
+      color: #555;
+    }
+
+    .settings-save-btn {
+      background: #25D366;
+      border: none;
+      color: #fff;
+      font-size: 12px;
+      padding: 7px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background 0.2s;
+    }
+
+    .settings-save-btn:hover {
+      background: #20bd5a;
+    }
+
+    .settings-status {
+      font-size: 11px;
+      color: #25D366;
+      margin-top: 6px;
+      display: none;
+    }
   </style>
 </head>
 <body>
@@ -577,6 +663,17 @@
     <div>
       <div class="header-title">WhatsApp Çevirmen</div>
       <div class="header-subtitle">Ses & Metin → Türkçe</div>
+    </div>
+  </div>
+
+  <div class="settings-bar" id="settingsBar">
+    <button class="settings-toggle" id="settingsToggle">&#9881; API Ayarlari</button>
+    <div class="settings-form" id="settingsForm">
+      <div class="settings-row">
+        <input type="password" class="api-key-input" id="apiKeyInput" placeholder="Gemini API anahtarinizi girin...">
+        <button class="settings-save-btn" id="apiKeySaveBtn">Kaydet</button>
+      </div>
+      <div class="settings-status" id="settingsStatus"></div>
     </div>
   </div>
 
